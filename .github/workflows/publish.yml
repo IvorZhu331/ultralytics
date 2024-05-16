@@ -95,8 +95,8 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          TAG_OLD=8.2.15
-          TAG_NEW=8.2.16
+          TAG_OLD='8.2.15'
+          TAG_NEW='8.2.16'
 
           # Generate diff from the old tag to the new tag
           DIFF=$(git diff $TAG_OLD $TAG_NEW)
