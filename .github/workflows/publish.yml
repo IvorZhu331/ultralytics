@@ -95,12 +95,11 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Fetch tags and find the latest tag
-          git fetch --tags
-          LATEST_TAG=$(git describe --tags `git rev-list --tags --max-count=1`)
+          TAG_OLD=8.2.15
+          TAG_NEW=8.2.16
 
-          # Generate diff from the latest tag to HEAD
-          DIFF=$(git diff $LATEST_TAG HEAD)
+          # Generate diff from the old tag to the new tag
+          DIFF=$(git diff $TAG_OLD $TAG_NEW)
           
           # Generate summary using OpenAI API
           SUMMARY=$(curl https://api.openai.com/v1/completions \
