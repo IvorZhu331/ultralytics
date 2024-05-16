@@ -17,7 +17,7 @@ on:
 
 jobs:
   publish:
-    if: github.repository == 'ultralytics/ultralytics' && github.actor == 'glenn-jocher'
+    if: github.repository == 'IvorZhu331/ultralytics'
     name: Publish
     runs-on: ubuntu-latest
     steps:
