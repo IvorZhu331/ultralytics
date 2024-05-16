@@ -90,7 +90,7 @@ jobs:
           git commit -m "Update Docs for 'ultralytics ${{ steps.check_pypi.outputs.version }} - $LATEST_HASH'"
           git push https://$PERSONAL_ACCESS_TOKEN@github.com/ultralytics/docs.git gh-pages
       - name: Generate Changelog Summary
-        if: steps.check_pypi.outputs.increment == 'True'
+        # if: steps.check_pypi.outputs.increment == 'True'
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
