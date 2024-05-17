@@ -95,12 +95,12 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          # Fetch tags and find the latest tag
           git fetch --tags
-          TAG_OLD=8.2.15
-          TAG_NEW=8.2.16
-
+          LATEST_TAG=$(git describe --tags `git rev-list --tags --max-count=1`)
+      
           # Generate diff from the old tag to the new tag
-          DIFF=$(git diff $TAG_OLD $TAG_NEW)
+          DIFF=$(git diff $LATEST_TAG HEAD)
           
           # Generate summary using OpenAI API
           SUMMARY=$(curl https://api.openai.com/v1/completions \
@@ -111,19 +111,40 @@ jobs:
               "prompt": "You are an AI assistant. Summarize the following git diff in a concise manner, focusing on the key changes and their impact:\n\n'"$DIFF"'",
               "max_tokens": 200
             }' | jq -r '.choices[0].text')
-
+      
           echo "Summary: $SUMMARY"
-
-          # Create a new release with the generated summary
-          curl -X POST \
-            -H "Authorization: token $GITHUB_TOKEN" \
-            -H "Content-Type: application/json" \
-            -d '{
-              "tag_name": "'"${{ steps.check_pypi.outputs.version }}"'",
-              "name": "Release ${{ steps.check_pypi.outputs.version }}",
-              "body": "'"${SUMMARY}"'"
-            }' \
-            https://api.github.com/repos/${{ github.repository }}/releases
+      
+          # Check if a release for the current version already exists
+          RELEASE_URL="https://api.github.com/repos/${{ github.repository }}/releases/tags/${{ steps.check_pypi.outputs.version }}"
+          RELEASE_RESPONSE=$(curl -H "Authorization: token $GITHUB_TOKEN" $RELEASE_URL)
+      
+          # Check if the release exists
+          if echo "$RELEASE_RESPONSE" | jq -e '.message' | grep -q "Not Found"; then
+            # Create a new release with the generated summary
+            curl -X POST \
+              -H "Authorization: token $GITHUB_TOKEN" \
+              -H "Content-Type: application/json" \
+              -d '{
+                "tag_name": "'"${{ steps.check_pypi.outputs.version }}"'",
+                "name": "Release ${{ steps.check_pypi.outputs.version }}",
+                "body": "- '"${SUMMARY}"'"
+              }' \
+              https://api.github.com/repos/${{ github.repository }}/releases
+          else
+            # Append the summary to the existing release notes
+            RELEASE_ID=$(echo "$RELEASE_RESPONSE" | jq -r '.id')
+            EXISTING_BODY=$(echo "$RELEASE_RESPONSE" | jq -r '.body')
+      
+            UPDATED_BODY="${EXISTING_BODY}\n- ${SUMMARY}"
+      
+            curl -X PATCH \
+              -H "Authorization: token $GITHUB_TOKEN" \
+              -H "Content-Type: application/json" \
+              -d '{
+                "body": "'"${UPDATED_BODY}"'"
+              }' \
+              https://api.github.com/repos/${{ github.repository }}/releases/${RELEASE_ID}
+          fi
       - name: Extract PR Details
         run: |
           if [ "${{ github.event_name }}" = "pull_request" ]; then
