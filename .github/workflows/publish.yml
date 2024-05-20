@@ -102,6 +102,8 @@ jobs:
           # Generate diff from the old tag to the new tag
           DIFF=$(git diff $LATEST_TAG HEAD)
           
+          echo "Diff: $DIFF"
+          
           # Generate summary using OpenAI API
           SUMMARY=$(curl -s https://api.openai.com/v1/completions \
             -H "Content-Type: application/json" \
