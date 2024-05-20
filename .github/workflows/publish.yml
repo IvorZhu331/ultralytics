@@ -101,7 +101,7 @@ jobs:
       
           # Generate diff from the old tag to the new tag
           DIFF=$(git diff $LATEST_TAG HEAD)
-          ESCAPED_DIFF=$(echo "$DIFF" | jq -sR .)
+          ESCAPED_DIFF=$(echo "$DIFF" | jq -Rs .)
           AZURE_OPENAI_ENDPOINT="https://ivor-zhu.openai.azure.com/openai/deployments/my-gpt35-model/chat/completions?api-version=2023-05-15"
 
           API_RESPONSE=$(curl -s $AZURE_OPENAI_ENDPOINT \
@@ -110,7 +110,7 @@ jobs:
           -d '{
             "messages": [
               {"role": "system", "content": "You are an AI assistant."},
-              {"role": "user", "content": "Summarize the following git diff in a concise manner, focusing on the key changes and their impact:\n\n'"$DIFF"'"}
+              {"role": "user", "content": "Summarize the following git diff in a concise manner, focusing on the key changes and their impact:\n\n'"$ESCAPED_DIFF"'"}
             ],
             "max_tokens": 200
           }')
