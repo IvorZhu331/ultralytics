@@ -116,36 +116,37 @@ jobs:
       
           echo "Summary: $SUMMARY"
       
-          # Check if a release for the current version already exists
           RELEASE_URL="https://api.github.com/repos/${{ github.repository }}/releases/tags/${{ steps.check_pypi.outputs.version }}"
           RELEASE_RESPONSE=$(curl -s -H "Authorization: token $GITHUB_TOKEN" $RELEASE_URL)
-      
+
           # Check if the release exists
           if echo "$RELEASE_RESPONSE" | jq -e '.message' | grep -q "Not Found"; then
             # Create a new release with the generated summary
             curl -s -X POST \
               -H "Authorization: token $GITHUB_TOKEN" \
               -H "Content-Type: application/json" \
-              -d '{
-                "tag_name": "'"${{ steps.check_pypi.outputs.version }}"'",
-                "name": "Release ${{ steps.check_pypi.outputs.version }}",
-                "body": "- '"${SUMMARY}"'"
-              }' \
-              https://api.github.com/repos/${{ github.repository }}/releases
+              -d @- https://api.github.com/repos/${{ github.repository }}/releases << EOF
+          {
+            "tag_name": "${{ steps.check_pypi.outputs.version }}",
+            "name": "Release ${{ steps.check_pypi.outputs.version }}",
+            "body": "- ${SUMMARY}"
+          }
+          EOF
           else
             # Append the summary to the existing release notes
             RELEASE_ID=$(echo "$RELEASE_RESPONSE" | jq -r '.id')
             EXISTING_BODY=$(echo "$RELEASE_RESPONSE" | jq -r '.body')
-      
+
             UPDATED_BODY="${EXISTING_BODY}\n- ${SUMMARY}"
-      
+
             curl -s -X PATCH \
               -H "Authorization: token $GITHUB_TOKEN" \
               -H "Content-Type: application/json" \
-              -d '{
-                "body": "'"${UPDATED_BODY}"'"
-              }' \
-              https://api.github.com/repos/${{ github.repository }}/releases/${RELEASE_ID}
+              -d @- https://api.github.com/repos/${{ github.repository }}/releases/${RELEASE_ID} << EOF
+          {
+            "body": "${UPDATED_BODY}"
+          }
+          EOF
           fi
       - name: Extract PR Details
         run: |
