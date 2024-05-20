@@ -101,7 +101,7 @@ jobs:
       
           # Generate diff from the old tag to the new tag
           DIFF=$(git diff $LATEST_TAG HEAD)
-          
+          ESCAPED_DIFF=$(echo "$DIFF" | jq -sR .)
           AZURE_OPENAI_ENDPOINT="https://ivor-zhu.openai.azure.com/openai/deployments/my-gpt35-model/chat/completions?api-version=2023-05-15"
 
           API_RESPONSE=$(curl -s $AZURE_OPENAI_ENDPOINT \
