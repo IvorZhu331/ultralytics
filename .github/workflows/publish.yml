@@ -104,26 +104,21 @@ jobs:
 
           AZURE_OPENAI_ENDPOINT="https://ivor-zhu.openai.azure.com/openai/deployments/my-gpt35-model/chat/completions?api-version=2023-05-15"
           
-          JSON_PAYLOAD=$(cat <<EOF
-            {
-              "messages": [
-                {
-                  "role": "system",
-                  "content": "You are a helpful assistant."
-                },
-                {
-                  "role": "user",
-                  "content": "Please say hello world"
-                }
-              ]
-            }
-            EOF
-            )
-
-          API_RESPONSE=$(curl -s $AZURE_OPENAI_ENDPOINT \
-            -H "Content-Type: application/json" \
-            -H "api-key: $AZURE_API_KEY" \
-            -d "$JSON_PAYLOAD")
+          API_RESPONSE=$(curl -s "$AZURE_OPENAI_ENDPOINT" \
+          -H "Content-Type: application/json" \
+          -H "api-key: $AZURE_API_KEY" \
+          -d '{
+            "messages": [
+              {
+                "role": "system",
+                "content": "You are a helpful assistant."
+              },
+              {
+                "role": "user",
+                "content": "Please say hello world"
+              }
+            ]
+          }')
 
           # Print the entire API response for debugging
           echo "API Response: $API_RESPONSE"
