@@ -103,7 +103,7 @@ jobs:
           DIFF=$(git diff $LATEST_TAG HEAD)
           
           # Generate summary using OpenAI API
-          SUMMARY=$(curl https://api.openai.com/v1/completions \
+          SUMMARY=$(curl -s https://api.openai.com/v1/completions \
             -H "Content-Type: application/json" \
             -H "Authorization: Bearer $OPENAI_API_KEY" \
             -d '{
@@ -116,12 +116,12 @@ jobs:
       
           # Check if a release for the current version already exists
           RELEASE_URL="https://api.github.com/repos/${{ github.repository }}/releases/tags/${{ steps.check_pypi.outputs.version }}"
-          RELEASE_RESPONSE=$(curl -H "Authorization: token $GITHUB_TOKEN" $RELEASE_URL)
+          RELEASE_RESPONSE=$(curl -s -H "Authorization: token $GITHUB_TOKEN" $RELEASE_URL)
       
           # Check if the release exists
           if echo "$RELEASE_RESPONSE" | jq -e '.message' | grep -q "Not Found"; then
             # Create a new release with the generated summary
-            curl -X POST \
+            curl -s -X POST \
               -H "Authorization: token $GITHUB_TOKEN" \
               -H "Content-Type: application/json" \
               -d '{
@@ -137,7 +137,7 @@ jobs:
       
             UPDATED_BODY="${EXISTING_BODY}\n- ${SUMMARY}"
       
-            curl -X PATCH \
+            curl -s -X PATCH \
               -H "Authorization: token $GITHUB_TOKEN" \
               -H "Content-Type: application/json" \
               -d '{
