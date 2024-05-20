@@ -92,7 +92,7 @@ jobs:
       - name: Generate Changelog Summary
         # if: steps.check_pypi.outputs.increment == 'True'
         env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          AZURE_API_KEY: ${{ secrets.AZURE_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           # Fetch tags and find the latest tag
@@ -102,11 +102,12 @@ jobs:
           # Generate diff from the old tag to the new tag
           DIFF=$(git diff $LATEST_TAG HEAD)
           
-          API_RESPONSE=$(curl -s https://api.openai.com/v1/chat/completions \
+          AZURE_OPENAI_ENDPOINT="https://ivor-zhu.openai.azure.com/"
+
+          API_RESPONSE=$(curl -s $AZURE_OPENAI_ENDPOINT \
           -H "Content-Type: application/json" \
-          -H "Authorization: Bearer $OPENAI_API_KEY" \
+          -H "api-key: $AZURE_API_KEY" \
           -d '{
-            "model": "gpt-3.5-turbo",
             "messages": [
               {"role": "system", "content": "You are an AI assistant."},
               {"role": "user", "content": "Summarize the following git diff in a concise manner, focusing on the key changes and their impact:\n\n'"$DIFF"'"}
