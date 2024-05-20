@@ -114,15 +114,16 @@ jobs:
             "max_tokens": 200
           }' "$ESCAPED_DIFF")
 
-          API_RESPONSE=$(curl -s $AZURE_OPENAI_ENDPOINT \
+          API_RESPONSE=$(curl -s "$AZURE_OPENAI_ENDPOINT" \
             -H "Content-Type: application/json" \
             -H "api-key: $AZURE_API_KEY" \
             -d "$JSON_PAYLOAD")
+
           # Print the entire API response for debugging
           echo "API Response: $API_RESPONSE"
 
           SUMMARY=$(echo "$API_RESPONSE" | jq -r '.choices[0].message.content')
-      
+        
           echo "Summary: $SUMMARY"
       
           RELEASE_URL="https://api.github.com/repos/${{ github.repository }}/releases/tags/${{ steps.check_pypi.outputs.version }}"
