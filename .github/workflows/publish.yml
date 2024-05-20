@@ -101,20 +101,26 @@ jobs:
       
           # Generate diff from the old tag to the new tag
           DIFF=$(git diff $LATEST_TAG HEAD)
-          
-          ESCAPED_DIFF=$(echo "$DIFF" | jq -Rs .)
 
           AZURE_OPENAI_ENDPOINT="https://ivor-zhu.openai.azure.com/openai/deployments/my-gpt35-model/chat/completions?api-version=2023-05-15"
+          
+          JSON_PAYLOAD=$(cat <<EOF
+            {
+              "messages": [
+                {
+                  "role": "system",
+                  "content": "You are a helpful assistant."
+                },
+                {
+                  "role": "user",
+                  "content": "Please say hello world"
+                }
+              ]
+            }
+            EOF
+            )
 
-          JSON_PAYLOAD=$(printf '{
-            "messages": [
-              {"role": "system", "content": "You are an AI assistant."},
-              {"role": "user", "content": "Summarize the following git diff in a concise manner, focusing on the key changes and their impact:\n\n%s"}
-            ],
-            "max_tokens": 200
-          }' "$ESCAPED_DIFF")
-
-          API_RESPONSE=$(curl -s "$AZURE_OPENAI_ENDPOINT" \
+          API_RESPONSE=$(curl -s $AZURE_OPENAI_ENDPOINT \
             -H "Content-Type: application/json" \
             -H "api-key: $AZURE_API_KEY" \
             -d "$JSON_PAYLOAD")
@@ -123,7 +129,7 @@ jobs:
           echo "API Response: $API_RESPONSE"
 
           SUMMARY=$(echo "$API_RESPONSE" | jq -r '.choices[0].message.content')
-        
+      
           echo "Summary: $SUMMARY"
       
           RELEASE_URL="https://api.github.com/repos/${{ github.repository }}/releases/tags/${{ steps.check_pypi.outputs.version }}"
