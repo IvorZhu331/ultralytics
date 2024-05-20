@@ -104,6 +104,8 @@ jobs:
 
           AZURE_OPENAI_ENDPOINT="https://ivor-zhu.openai.azure.com/openai/deployments/my-gpt35-model/chat/completions?api-version=2023-05-15"
           
+          echo "DIFF: $DIFF" 
+
           API_RESPONSE=$(curl -s "$AZURE_OPENAI_ENDPOINT" \
           -H "Content-Type: application/json" \
           -H "api-key: $AZURE_API_KEY" \
