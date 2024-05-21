@@ -93,76 +93,70 @@ jobs:
         env:
           AZURE_API_KEY: ${{ secrets.AZURE_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          COMMIT_SHA: ${{ env.COMMIT_SHA }}
-          PR_NUMBER: ${{ env.PR_NUMBER }}
-          PR_TITLE: ${{ env.PR_TITLE }}
         run: |
-          if [ "${{ github.event_name }}" = "push" ]; then
-            PR_NUMBER=${{ env.PR_NUMBER }}
-            
-            DIFF_CONTENT=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
-              "https://github.com/${{ github.repository }}/commit/${COMMIT_SHA}.diff")
-            
-            echo "$DIFF"
-  
-            AZURE_OPENAI_ENDPOINT="https://ivor-zhu.openai.azure.com/openai/deployments/my-gpt35-model/chat/completions?api-version=2023-05-15"
-            
-            # Generate summary using Azure OpenAI API
-            API_RESPONSE=$(curl -s "$AZURE_OPENAI_ENDPOINT" \
+          # Fetch the latest commit
+          COMMIT_MESSAGE=$(git log -1 --pretty=%B)
+          
+          echo "Commit Message: $COMMIT_MESSAGE"
+          
+          AZURE_OPENAI_ENDPOINT="https://ivor-zhu.openai.azure.com/openai/deployments/my-gpt35-model/chat/completions?api-version=2023-05-15"
+          
+          # Generate summary using Azure OpenAI API
+          API_RESPONSE=$(curl -s "$AZURE_OPENAI_ENDPOINT" \
+            -H "Content-Type: application/json" \
+            -H "api-key: $AZURE_API_KEY" \
+            -d '{
+              "messages": [
+                {
+                  "role": "system",
+                  "content": "You are a helpful assistant."
+                },
+                {
+                  "role": "user",
+                  "content": "Summarize the following commit message in a concise manner, focusing on the key changes and their impact:\n\n'"$COMMIT_MESSAGE"'"
+                }
+              ]
+            }')
+    
+          # Print the entire API response for debugging
+          echo "API Response: $API_RESPONSE"
+    
+          SUMMARY=$(echo "$API_RESPONSE" | jq -r '.choices[0].message.content')
+      
+          echo "Summary: $SUMMARY"
+      
+          RELEASE_URL="https://api.github.com/repos/${{ github.repository }}/releases/tags/${{ steps.check_pypi.outputs.version }}"
+          RELEASE_RESPONSE=$(curl -s -H "Authorization: token $GITHUB_TOKEN" $RELEASE_URL)
+    
+          # Check if the release exists
+          if echo "$RELEASE_RESPONSE" | jq -e '.message' | grep -q "Not Found"; then
+            # Create a new release with the generated summary
+            curl -s -X POST \
+              -H "Authorization: token $GITHUB_TOKEN" \
               -H "Content-Type: application/json" \
-              -H "api-key: $AZURE_API_KEY" \
-              -d '{
-                "messages": [
-                  {
-                    "role": "system",
-                    "content": "You are a helpful assistant."
-                  },
-                  {
-                    "role": "user",
-                    "content": "Summarize the following git diff in a concise manner, focusing on the key changes and their impact:\n\n'"$DIFF"'"
-                  }
-                ]
-              }')
-  
-            # Print the entire API response for debugging
-            echo "API Response: $API_RESPONSE"
-  
-            SUMMARY=$(echo "$API_RESPONSE" | jq -r '.choices[0].message.content')
-        
-            echo "Summary: $SUMMARY"
-        
-            RELEASE_URL="https://api.github.com/repos/${{ github.repository }}/releases/tags/${{ steps.check_pypi.outputs.version }}"
-            RELEASE_RESPONSE=$(curl -s -H "Authorization: token $GITHUB_TOKEN" $RELEASE_URL)
-  
-            # Check if the release exists
-            if echo "$RELEASE_RESPONSE" | jq -e '.message' | grep -q "Not Found"; then
-              # Create a new release with the generated summary
-              curl -s -X POST \
-                -H "Authorization: token $GITHUB_TOKEN" \
-                -H "Content-Type: application/json" \
-                -d @- https://api.github.com/repos/${{ github.repository }}/releases << EOF
+              -d @- https://api.github.com/repos/${{ github.repository }}/releases << EOF
             {
               "tag_name": "${{ steps.check_pypi.outputs.version }}",
               "name": "Release ${{ steps.check_pypi.outputs.version }}",
               "body": "- ${SUMMARY}"
             }
-
-            else
-              # Append the summary to the existing release notes
-              RELEASE_ID=$(echo "$RELEASE_RESPONSE" | jq -r '.id')
-              EXISTING_BODY=$(echo "$RELEASE_RESPONSE" | jq -r '.body')
-  
-              UPDATED_BODY="${EXISTING_BODY}\n- ${SUMMARY}"
-  
-              curl -s -X PATCH \
-                -H "Authorization: token $GITHUB_TOKEN" \
-                -H "Content-Type: application/json" \
-                -d @- https://api.github.com/repos/${{ github.repository }}/releases/${RELEASE_ID} << EOF
+            EOF
+          else
+            # Append the summary to the existing release notes
+            RELEASE_ID=$(echo "$RELEASE_RESPONSE" | jq -r '.id')
+            EXISTING_BODY=$(echo "$RELEASE_RESPONSE" | jq -r '.body')
+    
+            UPDATED_BODY="${EXISTING_BODY}\n- ${SUMMARY}"
+    
+            curl -s -X PATCH \
+              -H "Authorization: token $GITHUB_TOKEN" \
+              -H "Content-Type: application/json" \
+              -d @- https://api.github.com/repos/${{ github.repository }}/releases/${RELEASE_ID} << EOF
             {
               "body": "${UPDATED_BODY}"
             }
             EOF
-            fi
+          fi
       - name: Notify on Slack (Success)
         if: success() && github.event_name == 'push' && steps.check_pypi.outputs.increment == 'True'
         uses: slackapi/slack-github-action@v1.26.0
