@@ -95,32 +95,32 @@ jobs:
           AZURE_API_KEY: ${{ secrets.AZURE_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Fetch tags and find the latest tag
-          git fetch --tags
-          LATEST_TAG=$(git describe --tags `git rev-list --tags --max-count=1`)
-      
-          # Generate diff from the old tag to the new tag
-          DIFF=$(git diff $LATEST_TAG HEAD)
-
+          # Fetch the diff for the PR
+          PR_NUMBER=${{ env.PR_NUMBER }}
+          DIFF=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
+            "https://api.github.com/repos/${{ github.repository }}/pulls/$PR_NUMBER/files" | \
+            jq -r '.[] | .patch' | sed ':a;N;$!ba;s/\n/\\n/g')
+          
+          echo "$DIFF"
+          
           AZURE_OPENAI_ENDPOINT="https://ivor-zhu.openai.azure.com/openai/deployments/my-gpt35-model/chat/completions?api-version=2023-05-15"
           
-          echo "DIFF: $DIFF" 
-
+          # Generate summary using Azure OpenAI API
           API_RESPONSE=$(curl -s "$AZURE_OPENAI_ENDPOINT" \
-          -H "Content-Type: application/json" \
-          -H "api-key: $AZURE_API_KEY" \
-          -d '{
-            "messages": [
-              {
-                "role": "system",
-                "content": "You are a helpful assistant."
-              },
-              {
-                "role": "user",
-                "content": "Please say hello world"
-              }
-            ]
-          }')
+            -H "Content-Type: application/json" \
+            -H "api-key: $AZURE_API_KEY" \
+            -d '{
+              "messages": [
+                {
+                  "role": "system",
+                  "content": "You are a helpful assistant."
+                },
+                {
+                  "role": "user",
+                  "content": "Summarize the following git diff in a concise manner, focusing on the key changes and their impact:\n\n'"$DIFF"'"
+                }
+              ]
+            }')
 
           # Print the entire API response for debugging
           echo "API Response: $API_RESPONSE"
@@ -161,20 +161,6 @@ jobs:
           }
           EOF
           fi
-      - name: Extract PR Details
-        run: |
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            PR_JSON=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" https://api.github.com/repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }})
-            PR_NUMBER=${{ github.event.pull_request.number }}
-            PR_TITLE=$(echo $PR_JSON | jq -r '.title')
-          else
-            COMMIT_SHA=${{ github.event.after }}
-            PR_JSON=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" "https://api.github.com/search/issues?q=repo:${{ github.repository }}+is:pr+is:merged+sha:$COMMIT_SHA")
-            PR_NUMBER=$(echo $PR_JSON | jq -r '.items[0].number')
-            PR_TITLE=$(echo $PR_JSON | jq -r '.items[0].title')
-          fi
-          echo "PR_NUMBER=$PR_NUMBER" >> $GITHUB_ENV
-          echo "PR_TITLE=$PR_TITLE" >> $GITHUB_ENV
       - name: Notify on Slack (Success)
         if: success() && github.event_name == 'push' && steps.check_pypi.outputs.increment == 'True'
         uses: slackapi/slack-github-action@v1.26.0
