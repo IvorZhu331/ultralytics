@@ -1,4 +1,1 @@
-Test 1 of the fake commit for release
-version 8.2.19
-Test 2 of the fake commit for release
-version 8.2.19
+Fake change test 3 for this summarizing feature.
