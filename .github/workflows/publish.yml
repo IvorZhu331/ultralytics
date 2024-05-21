@@ -89,67 +89,46 @@ jobs:
           LATEST_HASH=$(git rev-parse --short=7 HEAD)
           git commit -m "Update Docs for 'ultralytics ${{ steps.check_pypi.outputs.version }} - $LATEST_HASH'"
           git push https://$PERSONAL_ACCESS_TOKEN@github.com/ultralytics/docs.git gh-pages
-      - name: Generate Changelog Summary
+      
+      - name: Generate Release Notes
         env:
-          AZURE_API_KEY: ${{ secrets.AZURE_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: python
         run: |
-          # Fetch the diff of the last commit
+          import requests
+          import os
 
-          git diff HEAD^ HEAD > diff.txt
+          # Define variables
+          repo = 'IvorZhu331/ultralytics'
+          latest_version = os.getenv('GITHUB_REF_NAME')
+          token = os.getenv('GITHUB_TOKEN')
 
-          DIFF=$(cat diff.txt)
-          
-          echo "Diff: $DIFF"
-          
-          AZURE_OPENAI_ENDPOINT="https://ivor-zhu.openai.azure.com/openai/deployments/my-gpt35-model/chat/completions?api-version=2023-05-15"
-          
-          # Generate summary using Azure OpenAI API
-          API_RESPONSE=$(curl -s "$AZURE_OPENAI_ENDPOINT" \
-            -H "Content-Type: application/json" \
-            -H "api-key: $AZURE_API_KEY" \
-            -d '{
-              "messages": [
-                {
-                  "role": "system",
-                  "content": "You are a helpful assistant."
-                },
-                {
-                  "role": "user",
-                  "content": "Say I am connected, the API is working correctly"'"
-                }
-              ]
-            }')
-    
-          # Print the entire API response for debugging
-          echo "API Response: $API_RESPONSE"
-    
-          SUMMARY=$(echo "$API_RESPONSE" | jq -r '.choices[0].message.content')
-      
-          echo "Summary: $SUMMARY"
-      
-          RELEASE_URL="https://api.github.com/repos/${{ github.repository }}/releases/tags/${{ steps.check_pypi.outputs.version }}"
-          RELEASE_RESPONSE=$(curl -s -H "Authorization: token $GITHUB_TOKEN" $RELEASE_URL)
-    
-          # Check if the release exists
-          if echo "$RELEASE_RESPONSE" | jq -e '.message' | grep -q "Not Found"; then
-            # Create a new release with the generated summary
-            curl -s -X POST \
-              -H "Authorization: token $GITHUB_TOKEN" \
-              -H "Content-Type: application/json" \
-              -d "{\"tag_name\": \"${{ steps.check_pypi.outputs.version }}\", \"name\": \"Release ${{ steps.check_pypi.outputs.version }}\", \"body\": \"- ${SUMMARY}\"}"
-          else
-            # Append the summary to the existing release notes
-            RELEASE_ID=$(echo "$RELEASE_RESPONSE" | jq -r '.id')
-            EXISTING_BODY=$(echo "$RELEASE_RESPONSE" | jq -r '.body')
-    
-            UPDATED_BODY="${EXISTING_BODY}\n- ${SUMMARY}"
-    
-            curl -s -X PATCH \
-              -H "Authorization: token $GITHUB_TOKEN" \
-              -H "Content-Type: application/json" \
-              -d "{\"body\": \"${UPDATED_BODY}\"}" "https://api.github.com/repos/${{ github.repository }}/releases/${RELEASE_ID}"
-          fi
+          # GitHub API endpoint to get releases
+          tags_url = f'https://api.github.com/repos/{repo}/tags'
+          releases_url = f'https://api.github.com/repos/{repo}/releases'
+          headers = {'Authorization': f'token {token}'}
+
+          # Fetch the latest release data
+          response = requests.get(tags_url, headers=headers)
+          tags = response.json()
+          latest_tag = tags[0]['name'] if tags else '0.0.0'
+
+          release_notes = f"## What's New in {latest_version}\n\n- Placeholder for actual changes."
+
+          release_payload = {
+              'tag_name': latest_version,
+              'name': f'Release {latest_version}',
+              'body': release_notes,
+              'draft': False,
+              'prerelease': False
+          }
+
+          response = requests.post(releases_url, headers=headers, data=json.dumps(release_payload))
+          if response.status_code == 201:
+              print(f'Successfully created release {latest_version}')
+          else:
+              print(f'Failed to create release {latest_version}: {response.content}')
+
       - name: Notify on Slack (Success)
         if: success() && github.event_name == 'push' && steps.check_pypi.outputs.increment == 'True'
         uses: slackapi/slack-github-action@v1.26.0
