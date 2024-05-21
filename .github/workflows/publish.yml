@@ -96,13 +96,14 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           # Fetch the diff for the PR
+
           PR_NUMBER=${{ env.PR_NUMBER }}
+          
           DIFF=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
-            "https://api.github.com/repos/${{ github.repository }}/pulls/$PR_NUMBER/files" | \
-            jq -r '.[] | .patch' | sed ':a;N;$!ba;s/\n/\\n/g')
+            "https://patch-diff.githubusercontent.com/raw/${{ github.repository }}/pull/$PR_NUMBER.diff")
           
           echo "$DIFF"
-          
+
           AZURE_OPENAI_ENDPOINT="https://ivor-zhu.openai.azure.com/openai/deployments/my-gpt35-model/chat/completions?api-version=2023-05-15"
           
           # Generate summary using Azure OpenAI API
