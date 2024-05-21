@@ -97,6 +97,7 @@ jobs:
         run: |
           import requests
           import os
+          import json
 
           # Define variables
           repo = 'IvorZhu331/ultralytics'
