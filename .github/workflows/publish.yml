@@ -146,7 +146,7 @@ jobs:
               "name": "Release ${{ steps.check_pypi.outputs.version }}",
               "body": "- ${SUMMARY}"
             }
-            EOF
+
             else
               # Append the summary to the existing release notes
               RELEASE_ID=$(echo "$RELEASE_RESPONSE" | jq -r '.id')
