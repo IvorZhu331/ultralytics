@@ -116,7 +116,7 @@ jobs:
                 },
                 {
                   "role": "user",
-                  "content": "Summarize the following git diff in a concise manner, focusing on the key changes and their impact:\n\n'"$DIFF"'"
+                  "content": "Say I am connected, the API is working correctly"'"
                 }
               ]
             }')
