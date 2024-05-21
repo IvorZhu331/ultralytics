@@ -95,7 +95,10 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           # Fetch the diff of the last commit
-          DIFF=$(git diff HEAD^ HEAD)
+
+          git diff HEAD^ HEAD > diff.txt
+
+          DIFF=$(cat diff.txt)
           
           echo "Diff: $DIFF"
           
