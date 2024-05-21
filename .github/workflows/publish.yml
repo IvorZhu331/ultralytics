@@ -94,10 +94,10 @@ jobs:
           AZURE_API_KEY: ${{ secrets.AZURE_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Fetch the latest commit
-          COMMIT_MESSAGE=$(git log -1 --pretty=%B)
+          # Fetch the diff of the last commit
+          DIFF=$(git diff HEAD^ HEAD)
           
-          echo "Commit Message: $COMMIT_MESSAGE"
+          echo "Diff: $DIFF"
           
           AZURE_OPENAI_ENDPOINT="https://ivor-zhu.openai.azure.com/openai/deployments/my-gpt35-model/chat/completions?api-version=2023-05-15"
           
@@ -113,7 +113,7 @@ jobs:
                 },
                 {
                   "role": "user",
-                  "content": "Summarize the following commit message in a concise manner, focusing on the key changes and their impact:\n\n'"$COMMIT_MESSAGE"'"
+                  "content": "Summarize the following git diff in a concise manner, focusing on the key changes and their impact:\n\n'"$DIFF"'"
                 }
               ]
             }')
@@ -140,7 +140,7 @@ jobs:
               "name": "Release ${{ steps.check_pypi.outputs.version }}",
               "body": "- ${SUMMARY}"
             }
-            EOF
+EOF
           else
             # Append the summary to the existing release notes
             RELEASE_ID=$(echo "$RELEASE_RESPONSE" | jq -r '.id')
@@ -155,7 +155,7 @@ jobs:
             {
               "body": "${UPDATED_BODY}"
             }
-            EOF
+EOF
           fi
       - name: Notify on Slack (Success)
         if: success() && github.event_name == 'push' && steps.check_pypi.outputs.increment == 'True'
